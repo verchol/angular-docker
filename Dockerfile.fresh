@@ -1,0 +1,1 @@
+FROM codefreshio/nodejs-bower-gulp-runtime:master
