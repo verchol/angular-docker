@@ -1,0 +1,9 @@
+FROM local/angular
+ 
+
+##################################
+#### no cache from this point ####
+COPY . /usr/src/app
+RUN cd tools && tsd install
+# Print the size of caches to ease debugging
+RUN du -sh ./node_modules || true
