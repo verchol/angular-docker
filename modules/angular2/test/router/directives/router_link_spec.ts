@@ -16,7 +16,7 @@ import {
 
 import {SpyRouter, SpyLocation} from '../spies';
 
-import {provide, Component, View} from 'angular2/core';
+import {provide, Component} from 'angular2/core';
 import {By} from 'angular2/platform/common_dom';
 
 import {
@@ -34,7 +34,7 @@ import {DOM} from 'angular2/src/platform/dom/dom_adapter';
 import {ResolvedInstruction} from 'angular2/src/router/instruction';
 
 let dummyInstruction = new ResolvedInstruction(
-    new ComponentInstruction('detail', [], null, null, true, '0'), null, {});
+    new ComponentInstruction('detail', [], null, null, true, '0', null, 'Detail'), null, {});
 
 export function main() {
   describe('routerLink directive', function() {
@@ -102,15 +102,14 @@ export function main() {
   });
 }
 
-@Component({selector: 'user-cmp'})
-@View({template: "hello {{user}}"})
+@Component({selector: 'user-cmp', template: "hello {{user}}"})
 class UserCmp {
   user: string;
   constructor(params: RouteParams) { this.user = params.get('name'); }
 }
 
-@Component({selector: 'test-component'})
-@View({
+@Component({
+  selector: 'test-component',
   template: `
     <div>
       <a [routerLink]="['/Detail']"

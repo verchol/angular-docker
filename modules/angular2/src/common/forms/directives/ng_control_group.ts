@@ -33,8 +33,6 @@ const controlGroupProvider =
  * @Component({
  *   selector: 'my-app',
  *   directives: [FORM_DIRECTIVES],
- * })
- * @View({
  *   template: `
  *     <div>
  *       <h2>Angular2 Control &amp; ControlGroup Example</h2>
@@ -54,8 +52,7 @@ const controlGroupProvider =
  *         <pre>{{valueOf(f)}}</pre>
  *       </form>
  *     </div>
- *   `,
- *   directives: [FORM_DIRECTIVES]
+ *   `
  * })
  * export class App {
  *   valueOf(cg: NgControlGroup): string {

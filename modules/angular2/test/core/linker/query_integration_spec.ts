@@ -23,7 +23,6 @@ import {
   TemplateRef,
   Query,
   QueryList,
-  View,
   ViewQuery,
   ContentChildren,
   ViewChildren,
@@ -98,8 +97,6 @@ export function main() {
                  view.debugElement.componentInstance.shouldShow = false;
                  view.detectChanges();
 
-                 // TODO: this fails right now!
-                 // -> queries are not dirtied!
                  expect(q.log).toEqual([
                    ["setter", "foo"],
                    ["init", "foo"],
@@ -145,7 +142,7 @@ export function main() {
            tcb.overrideTemplate(MyComp, template)
                .overrideTemplate(
                    NeedsViewChild,
-                   '<div *ngIf="true"><div *ngIf="shouldShow" text="foo"></div></div>')
+                   '<div *ngIf="true"><div *ngIf="shouldShow" text="foo"></div></div><div *ngIf="shouldShow2" text="bar"></div>')
                .createAsync(MyComp)
                .then((view) => {
                  view.detectChanges();
@@ -154,15 +151,18 @@ export function main() {
                  expect(q.log).toEqual([["setter", "foo"], ["init", "foo"], ["check", "foo"]]);
 
                  q.shouldShow = false;
+                 q.shouldShow2 = true;
+                 q.log = [];
                  view.detectChanges();
 
-                 expect(q.log).toEqual([
-                   ["setter", "foo"],
-                   ["init", "foo"],
-                   ["check", "foo"],
-                   ["setter", null],
-                   ["check", null]
-                 ]);
+                 expect(q.log).toEqual([["setter", "bar"], ["check", "bar"]]);
+
+                 q.shouldShow = false;
+                 q.shouldShow2 = false;
+                 q.log = [];
+                 view.detectChanges();
+
+                 expect(q.log).toEqual([["setter", null], ["check", null]]);
 
                  async.done();
                });
@@ -409,7 +409,7 @@ export function main() {
                });
          }));
 
-      it('should reflect dynamically inserted directives',
+      it('should support dynamically inserted directives',
          inject([TestComponentBuilder, AsyncTestCompleter], (tcb: TestComponentBuilder, async) => {
            var template = '<needs-query-by-var-binding #q>' +
                           '<div *ngFor="#item of list" [text]="item" #textLabel="textDir"></div>' +
@@ -693,8 +693,7 @@ class TextDirective {
   constructor() {}
 }
 
-@Component({selector: 'needs-content-children'})
-@View({template: ''})
+@Component({selector: 'needs-content-children', template: ''})
 class NeedsContentChildren implements AfterContentInit {
   @ContentChildren(TextDirective) textDirChildren: QueryList<TextDirective>;
   numberOfChildrenAfterContentInit: number;
@@ -702,8 +701,8 @@ class NeedsContentChildren implements AfterContentInit {
   ngAfterContentInit() { this.numberOfChildrenAfterContentInit = this.textDirChildren.length; }
 }
 
-@Component({selector: 'needs-view-children'})
-@View({template: '<div text></div>', directives: [TextDirective]})
+@Component(
+    {selector: 'needs-view-children', template: '<div text></div>', directives: [TextDirective]})
 class NeedsViewChildren implements AfterViewInit {
   @ViewChildren(TextDirective) textDirChildren: QueryList<TextDirective>;
   numberOfChildrenAfterViewInit: number;
@@ -711,8 +710,7 @@ class NeedsViewChildren implements AfterViewInit {
   ngAfterViewInit() { this.numberOfChildrenAfterViewInit = this.textDirChildren.length; }
 }
 
-@Component({selector: 'needs-content-child'})
-@View({template: ''})
+@Component({selector: 'needs-content-child', template: ''})
 class NeedsContentChild implements AfterContentInit, AfterContentChecked {
   _child: TextDirective;
 
@@ -732,8 +730,8 @@ class NeedsContentChild implements AfterContentInit, AfterContentChecked {
   }
 }
 
-@Component({selector: 'needs-view-child'})
-@View({
+@Component({
+  selector: 'needs-view-child',
   template: `
     <div *ngIf="shouldShow" text="foo"></div>
   `,
@@ -742,6 +740,7 @@ class NeedsContentChild implements AfterContentInit, AfterContentChecked {
 class NeedsViewChild implements AfterViewInit,
     AfterViewChecked {
   shouldShow: boolean = true;
+  shouldShow2: boolean = false;
   _child: TextDirective;
 
   @ViewChild(TextDirective)
@@ -764,8 +763,8 @@ class InertDirective {
   constructor() {}
 }
 
-@Component({selector: 'needs-query'})
-@View({
+@Component({
+  selector: 'needs-query',
   directives: [NgFor, TextDirective],
   template: '<div text="ignoreme"></div><b *ngFor="var dir of query">{{dir.text}}|</b>'
 })
@@ -775,8 +774,7 @@ class NeedsQuery {
   constructor(@Query(TextDirective) query: QueryList<TextDirective>) { this.query = query; }
 }
 
-@Component({selector: 'needs-four-queries'})
-@View({template: ''})
+@Component({selector: 'needs-four-queries', template: ''})
 class NeedsFourQueries {
   @ContentChild(TextDirective) query1: TextDirective;
   @ContentChild(TextDirective) query2: TextDirective;
@@ -784,8 +782,11 @@ class NeedsFourQueries {
   @ContentChild(TextDirective) query4: TextDirective;
 }
 
-@Component({selector: 'needs-query-desc'})
-@View({directives: [NgFor], template: '<div *ngFor="var dir of query">{{dir.text}}|</div>'})
+@Component({
+  selector: 'needs-query-desc',
+  directives: [NgFor],
+  template: '<div *ngFor="var dir of query">{{dir.text}}|</div>'
+})
 @Injectable()
 class NeedsQueryDesc {
   query: QueryList<TextDirective>;
@@ -794,8 +795,7 @@ class NeedsQueryDesc {
   }
 }
 
-@Component({selector: 'needs-query-by-var-binding'})
-@View({directives: [], template: '<ng-content>'})
+@Component({selector: 'needs-query-by-var-binding', directives: [], template: '<ng-content>'})
 @Injectable()
 class NeedsQueryByLabel {
   query: QueryList<any>;
@@ -804,16 +804,18 @@ class NeedsQueryByLabel {
   }
 }
 
-@Component({selector: 'needs-view-query-by-var-binding'})
-@View({directives: [], template: '<div #textLabel>text</div>'})
+@Component({
+  selector: 'needs-view-query-by-var-binding',
+  directives: [],
+  template: '<div #textLabel>text</div>'
+})
 @Injectable()
 class NeedsViewQueryByLabel {
   query: QueryList<any>;
   constructor(@ViewQuery("textLabel") query: QueryList<any>) { this.query = query; }
 }
 
-@Component({selector: 'needs-query-by-var-bindings'})
-@View({directives: [], template: '<ng-content>'})
+@Component({selector: 'needs-query-by-var-bindings', directives: [], template: '<ng-content>'})
 @Injectable()
 class NeedsQueryByTwoLabels {
   query: QueryList<any>;
@@ -822,8 +824,8 @@ class NeedsQueryByTwoLabels {
   }
 }
 
-@Component({selector: 'needs-query-and-project'})
-@View({
+@Component({
+  selector: 'needs-query-and-project',
   directives: [NgFor],
   template: '<div *ngFor="var dir of query">{{dir.text}}|</div><ng-content></ng-content>'
 })
@@ -833,8 +835,8 @@ class NeedsQueryAndProject {
   constructor(@Query(TextDirective) query: QueryList<TextDirective>) { this.query = query; }
 }
 
-@Component({selector: 'needs-view-query'})
-@View({
+@Component({
+  selector: 'needs-view-query',
   directives: [TextDirective],
   template: '<div text="1"><div text="2"></div></div>' +
                 '<div text="3"></div><div text="4"></div>'
@@ -845,8 +847,11 @@ class NeedsViewQuery {
   constructor(@ViewQuery(TextDirective) query: QueryList<TextDirective>) { this.query = query; }
 }
 
-@Component({selector: 'needs-view-query-if'})
-@View({directives: [NgIf, TextDirective], template: '<div *ngIf="show" text="1"></div>'})
+@Component({
+  selector: 'needs-view-query-if',
+  directives: [NgIf, TextDirective],
+  template: '<div *ngIf="show" text="1"></div>'
+})
 @Injectable()
 class NeedsViewQueryIf {
   show: boolean;
@@ -858,8 +863,8 @@ class NeedsViewQueryIf {
 }
 
 
-@Component({selector: 'needs-view-query-nested-if'})
-@View({
+@Component({
+  selector: 'needs-view-query-nested-if',
   directives: [NgIf, InertDirective, TextDirective],
   template: '<div text="1"><div *ngIf="show"><div dir></div></div></div>'
 })
@@ -873,8 +878,8 @@ class NeedsViewQueryNestedIf {
   }
 }
 
-@Component({selector: 'needs-view-query-order'})
-@View({
+@Component({
+  selector: 'needs-view-query-order',
   directives: [NgFor, TextDirective, InertDirective],
   template: '<div text="1"></div>' +
                 '<div *ngFor="var i of list" [text]="i"></div>' +
@@ -890,8 +895,8 @@ class NeedsViewQueryOrder {
   }
 }
 
-@Component({selector: 'needs-view-query-order-with-p'})
-@View({
+@Component({
+  selector: 'needs-view-query-order-with-p',
   directives: [NgFor, TextDirective, InertDirective],
   template: '<div dir><div text="1"></div>' +
                 '<div *ngFor="var i of list" [text]="i"></div>' +
@@ -907,8 +912,7 @@ class NeedsViewQueryOrderWithParent {
   }
 }
 
-@Component({selector: 'needs-tpl'})
-@View({template: '<template var-x="shadow"></template>'})
+@Component({selector: 'needs-tpl', template: '<template var-x="shadow"></template>'})
 class NeedsTpl {
   viewQuery: QueryList<TemplateRef>;
   query: QueryList<TemplateRef>;
@@ -919,8 +923,8 @@ class NeedsTpl {
   }
 }
 
-@Component({selector: 'my-comp'})
-@View({
+@Component({
+  selector: 'my-comp',
   directives: [
     NeedsQuery,
     NeedsQueryDesc,
@@ -943,7 +947,8 @@ class NeedsTpl {
     NgIf,
     NgFor,
     NeedsFourQueries
-  ]
+  ],
+  template: ''
 })
 @Injectable()
 class MyComp {

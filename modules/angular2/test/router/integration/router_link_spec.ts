@@ -22,7 +22,7 @@ import {NumberWrapper} from 'angular2/src/facade/lang';
 import {PromiseWrapper} from 'angular2/src/facade/async';
 import {ListWrapper} from 'angular2/src/facade/collection';
 
-import {provide, Component, View, DirectiveResolver} from 'angular2/core';
+import {provide, Component} from 'angular2/core';
 
 import {SpyLocation} from 'angular2/src/mock/location_mock';
 import {
@@ -54,7 +54,6 @@ export function main() {
 
     beforeEachProviders(() => [
       RouteRegistry,
-      DirectiveResolver,
       provide(Location, {useClass: SpyLocation}),
       provide(ROUTER_PRIMARY_COMPONENT, {useValue: MyComp}),
       provide(Router, {useClass: RootRouter}),
@@ -69,10 +68,7 @@ export function main() {
                       }));
 
     function compile(template: string = "<router-outlet></router-outlet>") {
-      return tcb.overrideView(MyComp, new View({
-                                template: ('<div>' + template + '</div>'),
-                                directives: [RouterOutlet, RouterLink]
-                              }))
+      return tcb.overrideTemplate(MyComp, ('<div>' + template + '</div>'))
           .createAsync(MyComp)
           .then((tc) => { fixture = tc; });
     }
@@ -262,7 +258,7 @@ export function main() {
 
                    async.done();
                  });
-                 router.navigateByUrl('/better-child');
+                 router.navigateByUrl('/better-child?extra=0');
                });
          }));
 
@@ -303,7 +299,7 @@ export function main() {
 
                    async.done();
                  });
-                 router.navigateByUrl('/child-with-grandchild/grandchild');
+                 router.navigateByUrl('/child-with-grandchild/grandchild?extra=0');
                });
          }));
 
@@ -382,7 +378,7 @@ function getHref(tc: ComponentFixture) {
   return DOM.getAttribute(tc.debugElement.query(By.css('a')).nativeElement, 'href');
 }
 
-@Component({selector: 'my-comp'})
+@Component({selector: 'my-comp', template: '', directives: [ROUTER_DIRECTIVES]})
 class MyComp {
   name;
 }

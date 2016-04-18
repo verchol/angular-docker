@@ -1,13 +1,13 @@
-import {bootstrap} from 'angular2/bootstrap';
+import {bootstrap} from 'angular2/platform/browser';
 import {
   Compiler,
   Component,
   Directive,
-  View,
   ViewContainerRef,
   bind,
   provide,
-  Provider
+  Provider,
+  enableProdMode
 } from 'angular2/core';
 import {NgIf} from 'angular2/common';
 
@@ -33,6 +33,7 @@ var BASELINE_IF_TEMPLATE;
 
 export function main() {
   BrowserDomAdapter.makeCurrent();
+  enableProdMode();
   var maxDepth = getIntParameter('depth');
 
   BASELINE_TREE_TEMPLATE = DOM.createTemplate(
@@ -217,8 +218,9 @@ class BaseLineIf {
   }
 }
 
-@Component({selector: 'tree', inputs: ['data']})
-@View({
+@Component({
+  selector: 'tree',
+  inputs: ['data'],
   directives: [TreeComponent, NgIf],
   template:
       `<span> {{data.value}} <span template='ngIf data.right != null'><tree [data]='data.right'></tree></span><span template='ngIf data.left != null'><tree [data]='data.left'></tree></span></span>`
@@ -227,8 +229,8 @@ class TreeComponent {
   data: TreeNode;
 }
 
-@Component({selector: 'app'})
-@View({directives: [TreeComponent], template: `<tree [data]='initData'></tree>`})
+@Component(
+    {selector: 'app', directives: [TreeComponent], template: `<tree [data]='initData'></tree>`})
 class AppComponent {
   initData: TreeNode;
   constructor() {

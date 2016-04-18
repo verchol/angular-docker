@@ -15,7 +15,7 @@ import {
   xit,
 } from 'angular2/testing_internal';
 import {ListWrapper, StringMapWrapper, SetWrapper} from 'angular2/src/facade/collection';
-import {Component, View, provide} from 'angular2/core';
+import {Component, provide} from 'angular2/core';
 import {NgFor} from 'angular2/common';
 import {NgClass} from 'angular2/src/common/directives/ng_class';
 
@@ -27,23 +27,21 @@ function detectChangesAndCheck(fixture: ComponentFixture, classes: string) {
 export function main() {
   describe('binding to CSS class list', () => {
 
-    describe('viewpool support', () => {
-      it('should clean up when the directive is destroyed',
-         inject([TestComponentBuilder, AsyncTestCompleter], (tcb: TestComponentBuilder, async) => {
-           var template = '<div *ngFor="var item of items" [ngClass]="item"></div>';
-           tcb.overrideTemplate(TestComponent, template)
-               .createAsync(TestComponent)
-               .then((fixture) => {
-                 fixture.debugElement.componentInstance.items = [['0']];
-                 fixture.detectChanges();
-                 fixture.debugElement.componentInstance.items = [['1']];
+    it('should clean up when the directive is destroyed',
+       inject([TestComponentBuilder, AsyncTestCompleter], (tcb: TestComponentBuilder, async) => {
+         var template = '<div *ngFor="var item of items" [ngClass]="item"></div>';
+         tcb.overrideTemplate(TestComponent, template)
+             .createAsync(TestComponent)
+             .then((fixture) => {
+               fixture.debugElement.componentInstance.items = [['0']];
+               fixture.detectChanges();
+               fixture.debugElement.componentInstance.items = [['1']];
 
-                 detectChangesAndCheck(fixture, '1');
+               detectChangesAndCheck(fixture, '1');
 
-                 async.done();
-               });
-         }));
-    });
+               async.done();
+             });
+       }));
 
 
     describe('expressions evaluating to objects', () => {
@@ -528,8 +526,7 @@ export function main() {
   })
 }
 
-@Component({selector: 'test-cmp'})
-@View({directives: [NgClass, NgFor]})
+@Component({selector: 'test-cmp', directives: [NgClass, NgFor], template: ''})
 class TestComponent {
   condition: boolean = true;
   items: any[];

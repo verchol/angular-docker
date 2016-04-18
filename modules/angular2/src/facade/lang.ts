@@ -1,14 +1,3 @@
-// Zones are TC-39 standards-track so users could choose a different implementation
-// Rather than import {Zone} from 'zone.js' we define an interface
-// so that any library that structurally matches may be used with Angular 2.
-export interface ZoneLike {
-  fork(locals?: any): ZoneLike;
-  run(fn: any, applyTo?: any, applyWith?: any): any;
-}
-export interface ZoneLikeConstructor {
-  longStackTraceZone: { [key: string]: any; };
-}
-
 export interface BrowserNodeGlobal {
   Object: typeof Object;
   Array: typeof Array;
@@ -20,8 +9,6 @@ export interface BrowserNodeGlobal {
   Math: any;  // typeof Math;
   assert(condition: any): void;
   Reflect: any;
-  zone: ZoneLike;
-  Zone: ZoneLikeConstructor;
   getAngularTestability: Function;
   getAllAngularTestabilities: Function;
   getAllAngularRootElements: Function;
@@ -30,6 +17,7 @@ export interface BrowserNodeGlobal {
   clearTimeout: Function;
   setInterval: Function;
   clearInterval: Function;
+  encodeURI: Function;
 }
 
 // TODO(jteplitz602): Load WorkerGlobalScope from lib.webworker.d.ts file #3492
@@ -44,6 +32,10 @@ if (typeof window === 'undefined') {
   }
 } else {
   globalScope = <any>window;
+}
+
+export function scheduleMicroTask(fn: Function) {
+  Zone.current.scheduleMicroTask('scheduleMicrotask', fn);
 }
 
 export const IS_DART = false;
@@ -70,7 +62,10 @@ export interface Type extends Function {}
 export interface ConcreteType extends Type { new (...args): any; }
 
 export function getTypeNameForDebugging(type: Type): string {
-  return type['name'];
+  if (type['name']) {
+    return type['name'];
+  }
+  return typeof type;
 }
 
 
@@ -129,6 +124,14 @@ export function isBlank(obj: any): boolean {
   return obj === undefined || obj === null;
 }
 
+export function isBoolean(obj: any): boolean {
+  return typeof obj === "boolean";
+}
+
+export function isNumber(obj: any): boolean {
+  return typeof obj === "number";
+}
+
 export function isString(obj: any): boolean {
   return typeof obj === "string";
 }
@@ -151,10 +154,6 @@ export function isPromise(obj: any): boolean {
 
 export function isArray(obj: any): boolean {
   return Array.isArray(obj);
-}
-
-export function isNumber(obj): boolean {
-  return typeof obj === 'number';
 }
 
 export function isDate(obj): boolean {
@@ -352,6 +351,21 @@ export class RegExpWrapper {
     regExp.lastIndex = 0;
     return {re: regExp, input: input};
   }
+  static replaceAll(regExp: RegExp, input: string, replace: Function): string {
+    let c = regExp.exec(input);
+    let res = '';
+    regExp.lastIndex = 0;
+    let prev = 0;
+    while (c) {
+      res += input.substring(prev, c.index);
+      res += replace(c);
+      prev = c.index + c[0].length;
+      regExp.lastIndex = prev;
+      c = regExp.exec(input);
+    }
+    res += input.substring(prev);
+    return res;
+  }
 }
 
 export class RegExpMatcherWrapper {
@@ -472,4 +486,16 @@ export function isPrimitive(obj: any): boolean {
 
 export function hasConstructor(value: Object, type: Type): boolean {
   return value.constructor === type;
+}
+
+export function bitWiseOr(values: number[]): number {
+  return values.reduce((a, b) => { return a | b; });
+}
+
+export function bitWiseAnd(values: number[]): number {
+  return values.reduce((a, b) => { return a & b; });
+}
+
+export function escape(s: string): string {
+  return _global.encodeURI(s);
 }
