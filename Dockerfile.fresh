@@ -1,3 +1,23 @@
-
-#update
 FROM codefreshio/nodejs-bower-gulp-runtime:master
+
+#machine
+
+
+  
+#---------
+
+#--preinstall
+
+#
+
+#install
+
+#cleanupLastView
+
+#artifact
+
+
+BuildStep
+   dockerfile
+
+RunStep
