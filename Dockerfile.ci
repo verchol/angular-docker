@@ -1,4 +1,4 @@
-FROM angular:base
+FROM codefreshio/angular:base
 
 # npm Cache
 ADD ./package.json /usr/src/app/
