@@ -53,20 +53,4 @@ RUN /tmp/install_dart.sh stable latest linux-x64
 # upgrade to the latest npm
 RUN curl -L https://npmjs.org/install.sh | sh
 
-# npm Cache
-ADD ./package.json /usr/src/app/
-ADD ./npm-shrinkwrap.json /usr/src/app
-RUN npm install
 RUN npm install -g bower tsd
-#typescript
-
-# bower cache
-ADD ./bower.json ./
-RUN bower install --allow-root
-
-##################################
-#### no cache from this point ####
-COPY . /usr/src/app
-RUN cd tools && tsd install
-# Print the size of caches to ease debugging
-RUN du -sh ./node_modules || true

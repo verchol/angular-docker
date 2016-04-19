@@ -55,9 +55,25 @@ RUN curl -L https://npmjs.org/install.sh | sh
 
 # npm Cache
 ADD ./package.json /usr/src/app/
-RUN npm install
-RUN npm install -g bower tsd typescript
+ADD ./npm-shrinkwrap.json /usr/src/app
+#RUN npm install
+#RUN mkdir ./node_modules
+RUN npm install -g bower tsd
+#typescript
 
 # bower cache
 ADD ./bower.json ./
 RUN bower install --allow-root
+
+##################################
+#### no cache from this point ####
+#COPY . /usr/src/app
+RUN echo 'AFTER SRC'
+#RUN cd tools && tsd install
+# Print the size of caches to ease debugging
+RUN du -sh ./node_modules || true
+
+#Run Unit test
+
+ENV MODE=build_only
+#RUN ./scripts/ci/build_and_test.sh ${MODE}

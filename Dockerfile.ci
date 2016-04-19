@@ -1,0 +1,19 @@
+FROM angular:base
+
+# npm Cache
+ADD ./package.json /usr/src/app/
+ADD ./npm-shrinkwrap.json /usr/src/app
+RUN npm install
+#RUN npm install -g bower tsd
+
+#typescript
+
+# bower cache
+ADD ./bower.json ./
+RUN bower install --allow-root
+
+#copy source
+COPY ./ /usr/src/app/
+
+#ci
+#RUN ./node_modules/gulp/bin/gulp.js build.js --useBundles
