@@ -1,5 +1,6 @@
 import {isPresent, isBlank} from 'angular2/src/facade/lang';
 import {ListWrapper, StringMapWrapper} from 'angular2/src/facade/collection';
+import {BaseException} from 'angular2/src/facade/exceptions';
 
 import * as o from '../output/output_ast';
 import {Identifiers, identifierToken} from '../identifiers';
@@ -33,9 +34,9 @@ export class CompilePipe {
 export class CompileView implements NameResolver {
   public viewType: ViewType;
   public viewQueries: CompileTokenMap<CompileQuery[]>;
-  public namedAppElements: Array<Array<string | o.Expression>> = [];
 
   public nodes: CompileNode[] = [];
+  // root nodes or AppElements for ViewContainers
   public rootNodesOrAppElements: o.Expression[] = [];
 
   public bindings: CompileBinding[] = [];
@@ -47,7 +48,7 @@ export class CompileView implements NameResolver {
   public dirtyParentQueriesMethod: CompileMethod;
   public updateViewQueriesMethod: CompileMethod;
   public detectChangesInInputsMethod: CompileMethod;
-  public detectChangesHostPropertiesMethod: CompileMethod;
+  public detectChangesRenderPropertiesMethod: CompileMethod;
   public afterContentLifecycleCallbacksMethod: CompileMethod;
   public afterViewLifecycleCallbacksMethod: CompileMethod;
   public destroyMethod: CompileMethod;
@@ -78,7 +79,7 @@ export class CompileView implements NameResolver {
     this.dirtyParentQueriesMethod = new CompileMethod(this);
     this.updateViewQueriesMethod = new CompileMethod(this);
     this.detectChangesInInputsMethod = new CompileMethod(this);
-    this.detectChangesHostPropertiesMethod = new CompileMethod(this);
+    this.detectChangesRenderPropertiesMethod = new CompileMethod(this);
 
     this.afterContentLifecycleCallbacksMethod = new CompileMethod(this);
     this.afterViewLifecycleCallbacksMethod = new CompileMethod(this);
@@ -123,10 +124,22 @@ export class CompileView implements NameResolver {
     }
   }
 
-  createPipe(name: string): o.Expression {
-    var pipeMeta: CompilePipeMetadata = this.pipeMetas.find((pipeMeta) => pipeMeta.name == name);
+  callPipe(name: string, input: o.Expression, args: o.Expression[]): o.Expression {
+    var pipeMeta: CompilePipeMetadata = null;
+    for (var i = this.pipeMetas.length - 1; i >= 0; i--) {
+      var localPipeMeta = this.pipeMetas[i];
+      if (localPipeMeta.name == name) {
+        pipeMeta = localPipeMeta;
+        break;
+      }
+    }
+    if (isBlank(pipeMeta)) {
+      throw new BaseException(
+          `Illegal state: Could not find pipe ${name} although the parser should have detected this error!`);
+    }
     var pipeFieldName = pipeMeta.pure ? `_pipe_${name}` : `_pipe_${name}_${this.pipes.size}`;
     var pipeExpr = this.pipes.get(pipeFieldName);
+    var pipeFieldCacheProp = o.THIS_EXPR.prop(`${pipeFieldName}_cache`);
     if (isBlank(pipeExpr)) {
       var deps = pipeMeta.type.diDeps.map((diDep) => {
         if (diDep.token.equalsTo(identifierToken(Identifiers.ChangeDetectorRef))) {
@@ -136,6 +149,12 @@ export class CompileView implements NameResolver {
       });
       this.fields.push(
           new o.ClassField(pipeFieldName, o.importType(pipeMeta.type), [o.StmtModifier.Private]));
+      if (pipeMeta.pure) {
+        this.fields.push(new o.ClassField(pipeFieldCacheProp.name, null, [o.StmtModifier.Private]));
+        this.createMethod.addStmt(o.THIS_EXPR.prop(pipeFieldCacheProp.name)
+                                      .set(o.importExpr(Identifiers.uninitialized))
+                                      .toStmt());
+      }
       this.createMethod.resetDebugInfo(null, null);
       this.createMethod.addStmt(o.THIS_EXPR.prop(pipeFieldName)
                                     .set(o.importExpr(pipeMeta.type).instantiate(deps))
@@ -144,7 +163,15 @@ export class CompileView implements NameResolver {
       this.pipes.set(pipeFieldName, pipeExpr);
       bindPipeDestroyLifecycleCallbacks(pipeMeta, pipeExpr, this);
     }
-    return pipeExpr;
+    var callPipeExpr: o.Expression = pipeExpr.callMethod('transform', [input, o.literalArr(args)]);
+    if (pipeMeta.pure) {
+      callPipeExpr =
+          o.THIS_EXPR.callMethod(
+                         'checkPurePipe',
+                         [o.literal(this.literalArrayCount++), o.literalArr([input].concat(args))])
+              .conditional(pipeFieldCacheProp.set(callPipeExpr), pipeFieldCacheProp);
+    }
+    return callPipeExpr;
   }
 
   getVariable(name: string): o.Expression {

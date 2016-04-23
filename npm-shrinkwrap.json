@@ -1,6 +1,6 @@
 {
   "name": "angular-srcs",
-  "version": "2.0.0-beta.14",
+  "version": "2.0.0-beta.15",
   "dependencies": {
     "abbrev": {
       "version": "1.0.7",
@@ -7804,7 +7804,8 @@
       "dependencies": {
         "mime-db": {
           "version": "1.20.0",
-          "from": "mime-db@>=1.20.0 <1.21.0"
+          "from": "mime-db@1.20.0",
+          "resolved": "https://registry.npmjs.org/mime-db/-/mime-db-1.20.0.tgz"
         },
         "mime-types": {
           "version": "2.1.8",
@@ -9289,9 +9290,9 @@
       }
     },
     "zone.js": {
-      "version": "0.6.10",
-      "from": "zone.js@0.6.10",
-      "resolved": "https://registry.npmjs.org/zone.js/-/zone.js-0.6.10.tgz"
+      "version": "0.6.12",
+      "from": "zone.js@0.6.12",
+      "resolved": "https://registry.npmjs.org/zone.js/-/zone.js-0.6.12.tgz"
     }
   }
 }

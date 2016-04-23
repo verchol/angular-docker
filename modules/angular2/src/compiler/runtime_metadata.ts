@@ -11,7 +11,7 @@ import {
 } from 'angular2/src/facade/lang';
 import {StringMapWrapper} from 'angular2/src/facade/collection';
 import {BaseException} from 'angular2/src/facade/exceptions';
-import {NoAnnotationError} from 'angular2/src/core/di/exceptions';
+import {NoAnnotationError} from 'angular2/src/core/di/reflective_exceptions';
 import * as cpl from './compile_metadata';
 import * as md from 'angular2/src/core/metadata/directives';
 import * as dimd from 'angular2/src/core/metadata/di';
@@ -24,10 +24,14 @@ import {LifecycleHooks, LIFECYCLE_HOOKS_VALUES} from 'angular2/src/core/metadata
 import {reflector} from 'angular2/src/core/reflection/reflection';
 import {Injectable, Inject, Optional} from 'angular2/src/core/di';
 import {PLATFORM_DIRECTIVES, PLATFORM_PIPES} from 'angular2/src/core/platform_directives_and_pipes';
-import {MODULE_SUFFIX} from './util';
+import {MODULE_SUFFIX, sanitizeIdentifier} from './util';
 import {assertArrayOfStrings} from './assertions';
 import {getUrlScheme} from 'angular2/src/compiler/url_resolver';
-import {Provider, constructDependencies, Dependency} from 'angular2/src/core/di/provider';
+import {Provider} from 'angular2/src/core/di/provider';
+import {
+  constructDependencies,
+  ReflectiveDependency
+} from 'angular2/src/core/di/reflective_provider';
 import {
   OptionalMetadata,
   SelfMetadata,
@@ -48,20 +52,18 @@ export class RuntimeMetadataResolver {
               @Optional() @Inject(PLATFORM_DIRECTIVES) private _platformDirectives: Type[],
               @Optional() @Inject(PLATFORM_PIPES) private _platformPipes: Type[]) {}
 
-  /**
-   * Wrap the stringify method to avoid naming things `function (arg1...) {`
-   */
-  private sanitizeName(obj: any): string {
-    let result = StringWrapper.replaceAll(stringify(obj), /[\s-]/g, '_');
-    if (result.indexOf('(') < 0) {
-      return result;
+  private sanitizeTokenName(token: any): string {
+    let identifier = stringify(token);
+    if (identifier.indexOf('(') >= 0) {
+      // case: anonymous functions!
+      let found = this._anonymousTypes.get(token);
+      if (isBlank(found)) {
+        this._anonymousTypes.set(token, this._anonymousTypeIndex++);
+        found = this._anonymousTypes.get(token);
+      }
+      identifier = `anonymous_token_${found}_`;
     }
-    let found = this._anonymousTypes.get(obj);
-    if (isBlank(found)) {
-      this._anonymousTypes.set(obj, this._anonymousTypeIndex++);
-      found = this._anonymousTypes.get(obj);
-    }
-    return `anonymous_type_${found}_`;
+    return sanitizeIdentifier(identifier);
   }
 
   getDirectiveMetadata(directiveType: Type): cpl.CompileDirectiveMetadata {
@@ -126,7 +128,7 @@ export class RuntimeMetadataResolver {
 
   getTypeMetadata(type: Type, moduleUrl: string): cpl.CompileTypeMetadata {
     return new cpl.CompileTypeMetadata({
-      name: this.sanitizeName(type),
+      name: this.sanitizeTokenName(type),
       moduleUrl: moduleUrl,
       runtime: type,
       diDeps: this.getDependenciesMetadata(type, null)
@@ -135,7 +137,7 @@ export class RuntimeMetadataResolver {
 
   getFactoryMetadata(factory: Function, moduleUrl: string): cpl.CompileFactoryMetadata {
     return new cpl.CompileFactoryMetadata({
-      name: this.sanitizeName(factory),
+      name: this.sanitizeTokenName(factory),
       moduleUrl: moduleUrl,
       runtime: factory,
       diDeps: this.getDependenciesMetadata(factory, null)
@@ -185,7 +187,7 @@ export class RuntimeMetadataResolver {
 
   getDependenciesMetadata(typeOrFunc: Type | Function,
                           dependencies: any[]): cpl.CompileDiDependencyMetadata[] {
-    var deps: Dependency[];
+    var deps: ReflectiveDependency[];
     try {
       deps = constructDependencies(typeOrFunc, dependencies);
     } catch (e) {
@@ -223,17 +225,16 @@ export class RuntimeMetadataResolver {
     });
   }
 
-  getRuntimeIdentifier(value: any): cpl.CompileIdentifierMetadata {
-    return new cpl.CompileIdentifierMetadata({runtime: value, name: this.sanitizeName(value)});
-  }
-
   getTokenMetadata(token: any): cpl.CompileTokenMetadata {
     token = resolveForwardRef(token);
     var compileToken;
     if (isString(token)) {
       compileToken = new cpl.CompileTokenMetadata({value: token});
     } else {
-      compileToken = new cpl.CompileTokenMetadata({identifier: this.getRuntimeIdentifier(token)});
+      compileToken = new cpl.CompileTokenMetadata({
+        identifier: new cpl.CompileIdentifierMetadata(
+            {runtime: token, name: this.sanitizeTokenName(token)})
+      });
     }
     return compileToken;
   }
@@ -262,7 +263,9 @@ export class RuntimeMetadataResolver {
     return new cpl.CompileProviderMetadata({
       token: this.getTokenMetadata(provider.token),
       useClass: isPresent(provider.useClass) ? this.getTypeMetadata(provider.useClass, null) : null,
-      useValue: isPresent(provider.useValue) ? this.getRuntimeIdentifier(provider.useValue) : null,
+      useValue: isPresent(provider.useValue) ?
+                    new cpl.CompileIdentifierMetadata({runtime: provider.useValue}) :
+                    null,
       useFactory: isPresent(provider.useFactory) ?
                       this.getFactoryMetadata(provider.useFactory, null) :
                       null,
@@ -295,7 +298,8 @@ export class RuntimeMetadataResolver {
       selectors: selectors,
       first: q.first,
       descendants: q.descendants,
-      propertyName: propertyName
+      propertyName: propertyName,
+      read: isPresent(q.read) ? this.getTokenMetadata(q.read) : null
     });
   }
 }
