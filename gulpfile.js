@@ -535,6 +535,15 @@ gulp.task('test.unit.js', ['build.js.dev'], function(neverDone) {
   });
 });
 
+gulp.task('test.unit.js.only', [], function(neverDone) {
+  var watch = require('./tools/build/watch');
+
+  printModulesWarning();
+  runSequence('!test.unit.js/karma-server', function() {
+    watch('modules/**', {ignoreInitial: true}, ['!broccoli.js.dev', '!test.unit.js/karma-run']);
+  });
+});
+
 gulp.task('watch.js.dev', ['build.js.dev'], function(neverDone) {
   var watch = require('./tools/build/watch');
 
