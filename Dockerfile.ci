@@ -10,10 +10,15 @@ RUN npm install
 
 # bower cache
 ADD ./bower.json ./
-RUN bower install --allow-root
+RUN bower install -/-allow-root
 
 #copy source
 COPY ./ /usr/src/app/
 
-#ci
+#build
+
+RUN npm install -g tsd
+#RUN npm install gulp
+RUN tsd reinstall --overwrite --clean --config modules/angular2/tsd.json && tsd reinstall --overwrite --clean --config tools/tsd.json && tsd reinstall --overwrite --config modules/angular1_router/tsd.json
+RUN node --max-old-space-size=2000 ./node_modules/.bin/gulp build.js --useBundles
 #RUN ./node_modules/gulp/bin/gulp.js build.js --useBundles
